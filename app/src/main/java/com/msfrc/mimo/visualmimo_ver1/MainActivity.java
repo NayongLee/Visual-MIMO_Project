@@ -3,6 +3,7 @@ package com.msfrc.mimo.visualmimo_ver1;
 import android.annotation.TargetApi;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
+import android.hardware.SensorManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -10,8 +11,14 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.Gravity;
+import android.view.OrientationEventListener;
 import android.view.SurfaceView;
 import android.view.WindowManager;
+import android.widget.Button;
+import android.widget.FrameLayout;
+import android.widget.TextView;
+import android.widget.Toast;
 
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.CameraBridgeViewBase;
@@ -27,7 +34,16 @@ public class MainActivity extends AppCompatActivity
     private Mat matInput;
     private Mat matResult;
 
+    //현재회전상태 (하단 Fragment위치)
+    private enum mOrientFragment {Right, Bottom, Left, Top}
+    private mOrientFragment mCurrOrientHomeButton = mOrientFragment.Right;
+
     public native void ImageOpenCV(long matAddrInput, long matAddrResult);
+    private OrientationEventListener mOrientEventListener;
+    private android.widget.RelativeLayout.LayoutParams mRelativeParams;
+    private FrameLayout mframe;
+    private Button test;
+    private TextView texts;
 
     // Used to load the 'native-lib' library on application startup.
     static {
@@ -76,6 +92,64 @@ public class MainActivity extends AppCompatActivity
         mOpenCvCameraView.setCameraIndex(0); // front-camera(1),  back-camera(0)
         mLoaderCallback.onManagerConnected(LoaderCallbackInterface.SUCCESS);
 
+        mframe = (FrameLayout)findViewById(R.id.frameTest);
+        test = (Button)findViewById(R.id.testButton);
+        texts = (TextView)findViewById(R.id.texts);
+        mOrientEventListener = new OrientationEventListener(this,
+                SensorManager.SENSOR_DELAY_NORMAL) {
+            @Override
+            public void onOrientationChanged(int arg0) {
+
+                //방향센서값에 따라 화면 요소들 회전// 0˚ (portrait)
+                if (arg0 >= 315 || arg0 < 45) {
+                    rotateViews(270);
+                    mCurrOrientHomeButton = mOrientFragment.Bottom;
+                    // 90˚
+                } else if (arg0 >= 45 && arg0 < 135) {
+                    rotateViews(180);
+                    mCurrOrientHomeButton = mOrientFragment.Left;
+                    // 180˚
+                } else if (arg0 >= 135 && arg0 < 225) {
+                    rotateViews(90);
+                    mCurrOrientHomeButton = mOrientFragment.Top;
+                    // 270˚ (landscape)
+                } else {
+                    rotateViews(0);
+                    mCurrOrientHomeButton = mOrientFragment.Right;
+                }
+
+            }
+        };
+
+        //방향센서 핸들러 활성화
+        mOrientEventListener.enable();
+
+        //방향센서 인식 오류 시, Toast 메시지 출력 후 종료
+        if (!mOrientEventListener.canDetectOrientation()) {
+            Toast.makeText(this, "Can't Detect Orientation",
+                    Toast.LENGTH_LONG).show();
+            finish();
+        }
+    }
+    public void rotateViews(int degree) {
+        test.setRotation(degree);
+        texts.setRotation(degree);
+
+        switch (degree) {
+            // 가로
+            case 0:
+            case 180:
+//                test.setLayoutParams();
+
+                break;
+
+            // 세로
+            case 90:
+            case 270:
+                test.setGravity(Gravity.CENTER_VERTICAL);
+
+                break;
+        }
     }
 
     /**
@@ -141,7 +215,6 @@ public class MainActivity extends AppCompatActivity
     static final int PERMISSIONS_REQUEST_CODE = 1000;
     String[] PERMISSIONS  = {"android.permission.CAMERA"};
 
-
     private boolean hasPermissions(String[] permissions) {
         int result;
 
@@ -155,12 +228,9 @@ public class MainActivity extends AppCompatActivity
                 return false;
             }
         }
-
         //모든 퍼미션이 허가되었음
         return true;
     }
-
-
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
@@ -180,7 +250,6 @@ public class MainActivity extends AppCompatActivity
                 break;
         }
     }
-
 
     @TargetApi(Build.VERSION_CODES.M)
     private void showDialogForPermission(String msg) {

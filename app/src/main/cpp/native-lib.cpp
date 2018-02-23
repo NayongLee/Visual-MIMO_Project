@@ -20,9 +20,8 @@ Java_com_msfrc_mimo_visualmimo_1ver1_MainActivity_ImageOpenCV(JNIEnv *env, jobje
                                                               jlong matAddrResult) {
 
     // TODO
-    //sample image to gray
     Mat &matInput = *(Mat *)matAddrInput;
     Mat &matResult = *(Mat *)matAddrResult;
-    cvtColor(matInput, matResult, CV_RGBA2GRAY);
+    cvtColor(matInput, matResult, CV_RGBA2RGB);
 
 }
